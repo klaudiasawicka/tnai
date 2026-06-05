@@ -8,12 +8,12 @@ namespace ProjektTnai.DTOs
 {
     public class UserDto
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         public string Email { get; set; } = string.Empty;
         public string NameSurname { get; set; } = string.Empty;
         public string Initials { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
-        public int RoleId { get; set; }
+        public Guid RoleId { get; set; }
         public RoleName RoleName { get; set; }
     }
 }

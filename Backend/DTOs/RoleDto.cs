@@ -8,7 +8,7 @@ namespace ProjektTnai.DTOs
 {
     public class RoleDto
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         public RoleName RoleName { get; set; }
     }
 }

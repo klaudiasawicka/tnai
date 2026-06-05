@@ -4,7 +4,7 @@ namespace ProjektTnai.Models;
 
 public class Resource
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public ResourceType Type { get; set; }
     public ResourceStatus Status { get; set; }

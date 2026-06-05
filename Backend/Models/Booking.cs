@@ -4,9 +4,9 @@ namespace ProjektTnai.Models;
 
 public class Booking
 {
-    public int Id { get; set; }
-    public int UserId { get; set; }
-    public int ResourceId { get; set; }
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public Guid ResourceId { get; set; }
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
     public decimal TotalPrice { get; set; }

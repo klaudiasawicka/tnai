@@ -7,7 +7,7 @@ namespace ProjektTnai.DTOs
 {
     public class EquipmentDto
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
     }
 }

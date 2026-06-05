@@ -1,31 +1,44 @@
+using Microsoft.EntityFrameworkCore;
+using ProjektTnai.Data;
 
 namespace ProjektTnai
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            builder.Services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowFrontend", policy =>
+                    policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+                          .AllowAnyHeader()
+                          .AllowAnyMethod());
+            });
 
             builder.Services.AddControllers();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            using (var scope = app.Services.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                await DbSeeder.InitializeAsync(context);
+            }
+
             if (app.Environment.IsDevelopment())
             {
                 app.MapOpenApi();
             }
 
+            app.UseCors("AllowFrontend");
             app.UseHttpsRedirection();
-
             app.UseAuthorization();
-
-
             app.MapControllers();
 
             app.Run();

@@ -11,6 +11,6 @@ namespace ProjektTnai.DTOs.Create
         public string Password { get; set; } = string.Empty;
         public string NameSurname { get; set; } = string.Empty;
         public string Initials { get; set; } = string.Empty;
-        public int RoleId { get; set; }
+        public Guid RoleId { get; set; }
     }
 }

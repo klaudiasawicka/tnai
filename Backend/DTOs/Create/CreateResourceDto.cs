@@ -15,6 +15,6 @@ namespace ProjektTnai.DTOs.Create
         public int Capacity { get; set; }
         public decimal PricePerHour { get; set; }
         public string? ImageUrl { get; set; }
-        public List<int> EquipmentIds { get; set; } = [];
+        public List<Guid> EquipmentIds { get; set; } = [];
     }
 }
