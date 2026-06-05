@@ -1,20 +1,34 @@
-import { Button } from "@/components/ui/button"
+import { Routes, Route } from "react-router"
+import { SidebarProvider } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/app-sidebar"
+import type { UserDto } from "@/auth/authType"
+import { RoleName } from "@/auth/authType"
+import { BookingsPage } from "@/pages/BookingsPage"
+import { BrowsePage } from "@/pages/BrowsePage"
+
+const mockUser: UserDto = {
+  id: "1",
+  email: "anna.kowalska@example.com",
+  nameSurname: "Anna Kowalska",
+  initials: "AK",
+  createdAt: "",
+  roleId: "1",
+  roleName: RoleName.User,
+}
 
 export function App() {
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
-      </div>
-    </div>
+    <SidebarProvider className="h-svh">
+      <AppSidebar user={mockUser} onLogout={() => {}} />
+      <main className="flex-1 overflow-hidden flex flex-col">
+        <Routes>
+          <Route path="/" element={<div className="p-6 text-sm text-muted-foreground">Strona główna</div>} />
+          <Route path="/browse" element={<BrowsePage />} />
+          <Route path="/bookings" element={<div className="p-6 overflow-auto flex-1"><BookingsPage /></div>} />
+          <Route path="/settings" element={<div className="p-6 text-sm text-muted-foreground">Ustawienia</div>} />
+        </Routes>
+      </main>
+    </SidebarProvider>
   )
 }
 

@@ -22,6 +22,17 @@ export interface CreateEquipmentDto {
   name: string
 }
 
+export interface CreateResourceDto {
+  name: string
+  type: ResourceType
+  status: ResourceStatus
+  floor: number
+  capacity: number
+  pricePerHour: number
+  imageUrl?: string
+  equipmentIds: string[]
+}
+
 export interface ResourceDto {
   id: string
   name: string
