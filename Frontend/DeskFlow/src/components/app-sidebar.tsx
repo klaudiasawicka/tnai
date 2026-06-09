@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Home,
   LayoutDashboard,
+  LayoutList,
   LogOut,
   Moon,
   Search,
@@ -27,11 +28,22 @@ import {
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/components/theme-provider"
 import type { UserDto } from "@/auth/authType"
+import { RoleName } from "@/auth/authType"
 
-const navItems = [
-  { label: "Start", icon: Home, to: "/" },
-  { label: "Przeglądaj", icon: Search, to: "/browse" },
-  { label: "Rezerwacje", icon: CalendarDays, to: "/bookings" },
+const adminNavItems = [
+  { label: "Status biura", icon: LayoutDashboard, to: "/admin/status" },
+  { label: "Zarządzanie",  icon: LayoutList,      to: "/admin/zarzadzanie" },
+]
+
+const accountNavItems = [
+  { label: "Start",      icon: Home,        to: "/" },
+  { label: "Przeglądaj", icon: Search,      to: "/browse" },
+]
+
+const userNavItems = [
+  { label: "Start",       icon: Home,        to: "/" },
+  { label: "Przeglądaj",  icon: Search,      to: "/browse" },
+  { label: "Rezerwacje",  icon: CalendarDays, to: "/bookings" },
 ]
 
 function NavItem({ label, icon: Icon, to }: { label: string; icon: LucideIcon; to: string }) {
@@ -59,6 +71,7 @@ interface AppSidebarProps {
 export function AppSidebar({ user, onLogout }: AppSidebarProps) {
   const settingsMatch = useMatch("/settings")
   const { theme, setTheme } = useTheme()
+  const isAdmin = user.roleName === RoleName.Admin
 
   function toggleTheme() {
     const isDark =
@@ -66,6 +79,10 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
       (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
     setTheme(isDark ? "light" : "dark")
   }
+
+  const isDark =
+    theme === "dark" ||
+    (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
 
   return (
     <Sidebar collapsible="none">
@@ -76,24 +93,48 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold">DeskFlow</span>
-            <span className="text-xs text-muted-foreground">
-              Rezerwacja biurek
-            </span>
+            <span className="text-xs text-muted-foreground">Rezerwacja biurek</span>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <NavItem key={item.to} {...item} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {isAdmin ? (
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel>Administrator</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {adminNavItems.map((item) => (
+                    <NavItem key={item.to} {...item} />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Konto</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {accountNavItems.map((item) => (
+                    <NavItem key={item.to} {...item} />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        ) : (
+          <SidebarGroup>
+            <SidebarGroupLabel>Konto</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {userNavItems.map((item) => (
+                  <NavItem key={item.to} {...item} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4 pt-2">
@@ -113,11 +154,9 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
             {user.initials}
           </div>
           <div className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate text-sm font-medium">
-              {user.nameSurname}
-            </span>
+            <span className="truncate text-sm font-medium">{user.nameSurname}</span>
             <span className="truncate text-xs text-muted-foreground">
-              Pracownik
+              {isAdmin ? "Administrator" : "Pracownik"}
             </span>
           </div>
           <button
@@ -125,9 +164,7 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
             className="text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Zmień motyw"
           >
-            {theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
-              ? <Sun className="size-4" />
-              : <Moon className="size-4" />}
+            {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </button>
           <button
             onClick={onLogout}

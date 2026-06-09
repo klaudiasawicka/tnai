@@ -44,3 +44,21 @@ export interface ResourceDto {
   imageUrl?: string
   equipment: EquipmentDto[]
 }
+
+export interface UpdateResourceDto {
+  name: string
+  type: ResourceType
+  status: ResourceStatus
+  floor: number
+  capacity: number
+  pricePerHour: number
+  imageUrl?: string
+  equipmentIds: string[]
+}
+
+export interface ResourceFilters {
+  type?: ResourceType
+  status?: ResourceStatus
+  minCapacity?: number
+  maxPrice?: number
+}

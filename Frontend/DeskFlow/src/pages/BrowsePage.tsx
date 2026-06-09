@@ -1,5 +1,9 @@
 import { useState, useMemo } from "react"
 import { ResourceType, ResourceStatus } from "@/types/resourceType"
+import { useResources } from "@/hooks/useResources"
+import { useCreateBooking } from "@/hooks/useBookings"
+import { useAuthStore } from "@/store/authStore"
+import type { CreateBookingDto } from "@/types/bookingType"
 import { cn } from "@/lib/utils"
 import {
   Users,
@@ -36,106 +40,13 @@ interface Resource {
   bookings: Booking[]
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Mapper ResourceDto → lokalny Resource ────────────────────────────────────
 
-const RESOURCES: Resource[] = [
-  {
-    id: "r1",
-    name: "Sala Alfa",
-    type: ResourceType.Room,
-    status: ResourceStatus.Occupied,
-    floor: 3,
-    capacity: 12,
-    description: 'Sala konferencyjna z ekranem 85" i systemem wideokonferencyjnym Cisco.',
-    subtypeLabel: "Sala konferencyjna",
-    equipment: ["WiFi", "Projektor", "Klimatyzacja", "Tablica"],
-    bookings: [{ start: 9, end: 10.5, person: "Marek Wiśniewski" }],
-  },
-  {
-    id: "r2",
-    name: "Sala Beta",
-    type: ResourceType.Room,
-    status: ResourceStatus.Available,
-    floor: 3,
-    capacity: 8,
-    description: "Sala konferencyjna z projektorem i tablicą interaktywną. Idealna na spotkania do 8 osób.",
-    subtypeLabel: "Sala konferencyjna",
-    equipment: ["WiFi", "Projektor", "Tablica"],
-    bookings: [{ start: 14, end: 16, person: "Ewa Nowak" }],
-  },
-  {
-    id: "r3",
-    name: "Biurko #12",
-    type: ResourceType.Desk,
-    status: ResourceStatus.Occupied,
-    floor: 2,
-    capacity: 1,
-    description: "Biurko przy oknie z dostępem do monitora zewnętrznego i regulowaną wysokością blatu.",
-    subtypeLabel: "Hot-desk",
-    equipment: ["WiFi", "Monitor"],
-    bookings: [{ start: 8, end: 17, person: "Jan Kowalski" }],
-  },
-  {
-    id: "r4",
-    name: "Pokój Ciszy",
-    type: ResourceType.Office,
-    status: ResourceStatus.Available,
-    floor: 4,
-    capacity: 2,
-    description: "Wyciszony pokój pracy indywidualnej lub w parze. Brak rozmów telefonicznych.",
-    subtypeLabel: "Pokój pracy cichej",
-    equipment: ["WiFi"],
-    bookings: [],
-  },
-  {
-    id: "r5",
-    name: "Sala Delta",
-    type: ResourceType.Room,
-    status: ResourceStatus.Maintenance,
-    floor: 3,
-    capacity: 16,
-    description: "Duża sala szkoleniowa z układem klasowym. Aktualnie w trakcie przeglądu technicznego.",
-    subtypeLabel: "Sala konferencyjna",
-    equipment: ["WiFi", "Projektor", "Klimatyzacja", "Tablica"],
-    bookings: [],
-  },
-  {
-    id: "r6",
-    name: "Biurko #07",
-    type: ResourceType.Desk,
-    status: ResourceStatus.Available,
-    floor: 2,
-    capacity: 1,
-    description: "Biurko w strefie open space z ergonomicznym krzesłem, blisko kuchni.",
-    subtypeLabel: "Hot-desk",
-    equipment: ["WiFi"],
-    bookings: [],
-  },
-  {
-    id: "r7",
-    name: "Sala Gamma",
-    type: ResourceType.Room,
-    status: ResourceStatus.Occupied,
-    floor: 5,
-    capacity: 6,
-    description: "Kameralna sala spotkań z widokiem na park. Wyposażona w ekran i system nagłośnienia.",
-    subtypeLabel: "Sala konferencyjna",
-    equipment: ["WiFi", "Monitor", "Tablica"],
-    bookings: [{ start: 11, end: 13, person: "Piotr Zając" }],
-  },
-  {
-    id: "r8",
-    name: "Biurko #03",
-    type: ResourceType.Desk,
-    status: ResourceStatus.Available,
-    floor: 2,
-    capacity: 1,
-    description: "Biurko przy ścianie z regulowaną wysokością blatu i dodatkowym monitorem.",
-    subtypeLabel: "Hot-desk",
-    equipment: ["WiFi", "Monitor"],
-    bookings: [],
-  },
-]
+function subtypeLabel(type: Resource["type"]): string {
+  if (type === ResourceType.Room) return "Sala konferencyjna"
+  if (type === ResourceType.Desk) return "Hot-desk"
+  return "Pokój"
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -308,9 +219,38 @@ const DURATIONS = [
 type TypeFilter = "all" | "room" | "desk" | "office"
 type StatusFilter = "all" | "available" | "occupied"
 
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+function buildIso(day: Date, totalMinutes: number): string {
+  const d = new Date(day)
+  d.setHours(Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0)
+  return d.toISOString()
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function BrowsePage() {
+  const { data: rawResources = [], isLoading, isError } = useResources()
+  const createBooking = useCreateBooking()
+  const user = useAuthStore((s) => s.user)
+
+  const RESOURCES: Resource[] = useMemo(
+    () =>
+      rawResources.map((r) => ({
+        id: r.id,
+        name: r.name,
+        type: r.type,
+        status: r.status,
+        floor: r.floor,
+        capacity: r.capacity,
+        description: "",
+        subtypeLabel: subtypeLabel(r.type),
+        equipment: r.equipment.map((e) => e.name),
+        bookings: [],
+      })),
+    [rawResources],
+  )
+
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
@@ -322,6 +262,8 @@ export function BrowsePage() {
   const [endMinutes, setEndMinutes] = useState(11 * 60 + 30)
   const [participants, setParticipants] = useState(2)
   const [note, setNote] = useState("")
+  const [bookingError, setBookingError] = useState<string | null>(null)
+  const [bookingDone, setBookingDone] = useState(false)
 
   const durationMin = endMinutes - startMinutes
 
@@ -337,7 +279,7 @@ export function BrowsePage() {
       if (statusFilter === "occupied" && r.status === ResourceStatus.Available) return false
       return true
     })
-  }, [search, typeFilter, statusFilter])
+  }, [search, typeFilter, statusFilter, RESOURCES])
 
   const availableCount = RESOURCES.filter((r) => r.status === ResourceStatus.Available).length
 
@@ -361,6 +303,33 @@ export function BrowsePage() {
     setSelectedDay(0)
     setStartMinutes(10 * 60)
     setEndMinutes(11 * 60 + 30)
+    setBookingError(null)
+    setBookingDone(false)
+  }
+
+  async function handleBooking() {
+    if (!user || !selected) return
+    setBookingError(null)
+    setBookingDone(false)
+
+    const dto: CreateBookingDto = {
+      userId: user.id,
+      resourceId: selected.id,
+      startTime: buildIso(selDay, startMinutes),
+      endTime: buildIso(selDay, endMinutes),
+      participantCount: participants,
+      note: note.trim() || undefined,
+    }
+
+    try {
+      await createBooking.mutateAsync(dto)
+      setBookingDone(true)
+      setNote("")
+    } catch (err) {
+      const axiosErr = err as { response?: { data?: unknown } }
+      const data = axiosErr?.response?.data
+      setBookingError(typeof data === "string" ? data : "Nie udało się złożyć rezerwacji.")
+    }
   }
 
   return (
@@ -432,6 +401,21 @@ export function BrowsePage() {
 
         {/* Resource list */}
         <div className="flex-1 overflow-y-auto">
+          {isLoading && (
+            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+              Ładowanie…
+            </div>
+          )}
+          {isError && !isLoading && (
+            <div className="flex items-center justify-center py-12 text-sm text-rose-400">
+              Nie udało się załadować zasobów
+            </div>
+          )}
+          {!isLoading && !isError && filtered.length === 0 && (
+            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+              Brak wyników
+            </div>
+          )}
           {filtered.map((r) => {
             const sc = statusConfig(r.status)
             const isActive = r.id === selectedId
@@ -689,8 +673,18 @@ export function BrowsePage() {
             </div>
 
             {/* Book button */}
-            <button className="w-full py-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-white text-sm font-semibold transition-colors cursor-pointer">
-              Zarezerwuj
+            {bookingDone && (
+              <p className="text-xs text-emerald-400 text-center">Rezerwacja złożona!</p>
+            )}
+            {bookingError && (
+              <p className="text-xs text-rose-400 text-center">{bookingError}</p>
+            )}
+            <button
+              onClick={handleBooking}
+              disabled={createBooking.isPending || !user || endMinutes <= startMinutes}
+              className="w-full py-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-white text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {createBooking.isPending ? "Rezerwowanie…" : "Zarezerwuj"}
             </button>
           </div>
         </div>

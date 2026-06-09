@@ -22,7 +22,24 @@ export interface CreateUserDto {
   initials: string
   roleId: string
 }
+
 export interface RoleDto {
   id: string
   roleName: RoleName
+}
+
+export interface TokenDto {
+  accessToken: string
+  refreshToken: string
+}
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface RegisterRequest {
+  email: string
+  password: string
+  nameSurname: string
 }
