@@ -9,6 +9,8 @@ public class User
     public string Initials { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public Guid RoleId { get; set; }
+    public string? RefreshToken { get; set; }
+    public DateTime RefreshTokenExpiryTime { get; set; }
 
     public Role Role { get; set; } = null!;
     public ICollection<Booking> Bookings { get; set; } = [];
