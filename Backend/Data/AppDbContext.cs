@@ -23,7 +23,7 @@ namespace ProjektTnai.Data
 
             modelBuilder.Entity<Role>(entity =>
             {
-                entity.ToTable("Role");
+                entity.ToTable("Roles"); // Corrected from "Role" to "Roles"
                 entity.HasKey(r => r.Id);
                 entity.Property(r => r.Id).HasColumnName("id");
                 entity.Property(r => r.RoleName)

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using ProjektTnai.Helpers;
 using ProjektTnai.Models;
+using BCrypt.Net;
 
 namespace ProjektTnai.Data
 {
@@ -32,7 +33,7 @@ namespace ProjektTnai.Data
             context.Roles.AddRange(roles);
             await context.SaveChangesAsync();
 
-            // users — zastąp plain-text hashe funkcją hashującą po dodaniu biblioteki auth (np. BCrypt.Net-Next)
+            // users
             var adminId   = Guid.NewGuid();
             var managerId = Guid.NewGuid();
             var user1Id   = Guid.NewGuid();
@@ -44,7 +45,7 @@ namespace ProjektTnai.Data
                 {
                     Id          = adminId,
                     Email       = "admin@deskflow.pl",
-                    Password    = "Admin123!",
+                    Password    = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
                     NameSurname = "Jan Kowalski",
                     Initials    = "JK",
                     RoleId      = adminRoleId,
@@ -54,7 +55,7 @@ namespace ProjektTnai.Data
                 {
                     Id          = managerId,
                     Email       = "manager@deskflow.pl",
-                    Password    = "Manager123!",
+                    Password    = BCrypt.Net.BCrypt.HashPassword("Manager123!"),
                     NameSurname = "Anna Nowak",
                     Initials    = "AN",
                     RoleId      = managerRoleId,
@@ -64,7 +65,7 @@ namespace ProjektTnai.Data
                 {
                     Id          = user1Id,
                     Email       = "user1@deskflow.pl",
-                    Password    = "User123!",
+                    Password    = BCrypt.Net.BCrypt.HashPassword("User123!"),
                     NameSurname = "Piotr Wiśniewski",
                     Initials    = "PW",
                     RoleId      = userRoleId,
@@ -74,7 +75,7 @@ namespace ProjektTnai.Data
                 {
                     Id          = user2Id,
                     Email       = "user2@deskflow.pl",
-                    Password    = "User123!",
+                    Password    = BCrypt.Net.BCrypt.HashPassword("User123!"),
                     NameSurname = "Marta Zielińska",
                     Initials    = "MZ",
                     RoleId      = userRoleId,

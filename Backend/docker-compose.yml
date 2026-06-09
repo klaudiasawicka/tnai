@@ -1,9 +1,14 @@
 version: '3.8'
 
+# This Docker Compose file is for running the database service only.
+# To run: docker-compose  up -d
+# To stop: docker-compose -f docker-compose.db.yml down
+
 services:
   db:
     image: mcr.microsoft.com/azure-sql-edge:latest
-    container_name: tnai-db
+#    platform: linux/arm64
+    container_name: tnai-db-local
     environment:
       - ACCEPT_EULA=Y
       - SA_PASSWORD=yourStrong(!)Password123
@@ -11,24 +16,6 @@ services:
       - "1433:1433"
     volumes:
       - tnai-db-data:/var/opt/mssql
-
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    platform: linux/arm64 
-    container_name: tnai-backend
-    depends_on:
-      - db
-    ports:
-      - "8080:8080"
-      - "8081:8081"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8080;https://+:8081
-      - ConnectionStrings__DefaultConnection=Server=db;Database=TnaiDb;User Id=sa;Password=yourStrong(!)Password123;Trusted_Connection=False;Encrypt=False;TrustServerCertificate=True;
-      - JWT_SECRET=a_very_long_and_secure_secret_key_that_should_be_in_a_vault
-    restart: on-failure
 
 volumes:
   tnai-db-data:
