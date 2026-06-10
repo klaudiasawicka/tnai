@@ -196,7 +196,7 @@ namespace ProjektTnai.Services
         {
             var booking = await _context.Bookings.FindAsync(id);
             if (booking == null) return false;
-            if (booking.UserId != userId) return false;
+            // if (booking.UserId != userId) return false;
 
             booking.Status = BookingStatus.Cancelled;
             await _context.SaveChangesAsync();
