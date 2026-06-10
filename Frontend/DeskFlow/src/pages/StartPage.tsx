@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { useNavigate } from "react-router"
 import {
   Calendar,
@@ -14,12 +15,14 @@ import {
 import { cn } from "@/lib/utils"
 import type { UserDto } from "@/auth/authType"
 import { ResourceType, ResourceStatus } from "@/types/resourceType"
+import type { ResourceDto } from "@/types/resourceType"
 import { BookingStatus } from "@/types/bookingType"
+import { useMyBookings, useUpdateBookingStatus } from "@/hooks/useBookings"
+import { useResources } from "@/hooks/useResources"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const POLISH_DAYS = ["niedziela", "poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota"]
-const POLISH_DAYS_SHORT = ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"]
 const POLISH_MONTHS = [
   "stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca",
   "lipca", "sierpnia", "września", "października", "listopada", "grudnia",
@@ -55,10 +58,16 @@ function calcDuration(start: string, end: string) {
   return m === 0 ? `${h}h` : `${h}h ${m}m`
 }
 
-function resourceIcon(type: number) {
+function resourceIcon(type: ResourceType) {
   if (type === ResourceType.Room) return <Users className="size-4" />
   if (type === ResourceType.Desk) return <Briefcase className="size-4" />
   return <BookOpen className="size-4" />
+}
+
+function subtypeLabelFromType(type: ResourceType): string {
+  if (type === ResourceType.Room) return "Sala konferencyjna"
+  if (type === ResourceType.Desk) return "Hot-desk"
+  return "Pokój pracy cichej"
 }
 
 const EQUIPMENT_ICONS: Record<string, React.ReactNode> = {
@@ -67,98 +76,6 @@ const EQUIPMENT_ICONS: Record<string, React.ReactNode> = {
   Klimatyzacja: <Wind className="size-3" />,
   Tablica: <PenLine className="size-3" />,
   Monitor: <Monitor className="size-3" />,
-}
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const mockBookings = [
-  {
-    id: "b1",
-    resourceId: "r2",
-    resourceName: "Sala Beta",
-    resourceSubtype: "Sala konferencyjna",
-    resourceFloor: 3,
-    resourceType: ResourceType.Room,
-    startTime: "2026-06-10T10:00:00",
-    endTime: "2026-06-10T11:30:00",
-    note: "Weekly product sync",
-    status: BookingStatus.Confirmed,
-  },
-  {
-    id: "b2",
-    resourceId: "r1",
-    resourceName: "Sala Alfa",
-    resourceSubtype: "Sala konferencyjna",
-    resourceFloor: 3,
-    resourceType: ResourceType.Room,
-    startTime: "2026-06-09T13:00:00",
-    endTime: "2026-06-09T14:30:00",
-    note: "All-hands Q3",
-    status: BookingStatus.Confirmed,
-  },
-  {
-    id: "b3",
-    resourceId: "r6",
-    resourceName: "Biurko #07",
-    resourceSubtype: "Hot-desk",
-    resourceFloor: 2,
-    resourceType: ResourceType.Desk,
-    startTime: "2026-06-11T08:00:00",
-    endTime: "2026-06-11T12:00:00",
-    note: "",
-    status: BookingStatus.Pending,
-  },
-  {
-    id: "b4",
-    resourceId: "r4",
-    resourceName: "Pokój Ciszy",
-    resourceSubtype: "Pokój pracy cichej",
-    resourceFloor: 4,
-    resourceType: ResourceType.Office,
-    startTime: "2026-06-12T15:00:00",
-    endTime: "2026-06-12T16:00:00",
-    note: "",
-    status: BookingStatus.Pending,
-  },
-]
-
-const mockResources = [
-  {
-    id: "r2",
-    name: "Sala Beta",
-    type: ResourceType.Room,
-    status: ResourceStatus.Available,
-    floor: 3,
-    capacity: 8,
-    subtypeLabel: "Sala konferencyjna",
-    equipment: ["WiFi", "Projektor", "Tablica"],
-  },
-  {
-    id: "r4",
-    name: "Pokój Ciszy",
-    type: ResourceType.Office,
-    status: ResourceStatus.Available,
-    floor: 4,
-    capacity: 2,
-    subtypeLabel: "Pokój pracy cichej",
-    equipment: ["WiFi"],
-  },
-  {
-    id: "r6",
-    name: "Biurko #07",
-    type: ResourceType.Desk,
-    status: ResourceStatus.Available,
-    floor: 2,
-    capacity: 1,
-    subtypeLabel: "Hot-desk",
-    equipment: ["WiFi"],
-  },
-]
-
-const officeStats = {
-  available: 4,
-  occupied: 3,
-  maintenance: 1,
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -171,24 +88,60 @@ export function StartPage({ user }: StartPageProps) {
   const navigate = useNavigate()
   const now = new Date()
 
+  const { data: myBookings = [] } = useMyBookings()
+  const { data: resources = [] } = useResources()
+  const updateStatus = useUpdateBookingStatus()
+
   const firstName = user.nameSurname.split(" ")[0]
 
-  const todayBookings = mockBookings.filter((b) => {
-    const d = new Date(b.startTime)
+  const resourceMap = useMemo(
+    () => new Map(resources.map((r) => [r.id, r])),
+    [resources],
+  )
+
+  const activeBookings = useMemo(
+    () => myBookings.filter((b) => b.status !== BookingStatus.Cancelled && b.status !== BookingStatus.Past),
+    [myBookings],
+  )
+
+  const todayBookings = useMemo(() => {
+    return myBookings.filter((b) => {
+      const d = new Date(b.startTime)
+      return (
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate()
+      )
+    })
+  }, [myBookings])
+
+  const nextBooking = useMemo(() => {
     return (
-      d.getFullYear() === now.getFullYear() &&
-      d.getMonth() === now.getMonth() &&
-      d.getDate() === now.getDate()
+      myBookings
+        .filter((b) => new Date(b.startTime) > now && b.status !== BookingStatus.Cancelled)
+        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0] ?? null
     )
-  })
+  }, [myBookings])
 
-  const upcomingBookings = mockBookings
-    .filter((b) => new Date(b.startTime) > now)
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+  const availableNow = useMemo(
+    () => resources.filter((r) => r.status === ResourceStatus.Available),
+    [resources],
+  )
 
-  const nextBooking = upcomingBookings[0] ?? null
+  const officeStats = useMemo(
+    () => ({
+      available: resources.filter((r) => r.status === ResourceStatus.Available).length,
+      occupied: resources.filter(
+        (r) => r.status === ResourceStatus.Booked || r.status === ResourceStatus.Occupied,
+      ).length,
+      maintenance: resources.filter((r) => r.status === ResourceStatus.Maintenance).length,
+    }),
+    [resources],
+  )
 
-  const availableNow = mockResources.filter((r) => r.status === ResourceStatus.Available)
+  function handleCancel(bookingId: string) {
+    updateStatus.mutate({ id: bookingId, status: BookingStatus.Cancelled })
+  }
 
   return (
     <div className="flex flex-col h-full overflow-auto">
@@ -230,7 +183,7 @@ export function StartPage({ user }: StartPageProps) {
           />
           <StatCard
             label="TWOJE REZERWACJE"
-            value={mockBookings.length}
+            value={activeBookings.length}
             dotClass="bg-cyan-400"
             textClass="text-cyan-400"
           />
@@ -261,9 +214,15 @@ export function StartPage({ user }: StartPageProps) {
 
                 <div>
                   <p className="text-xl font-semibold">{nextBooking.resourceName}</p>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {nextBooking.resourceSubtype} · Piętro {nextBooking.resourceFloor}
-                  </p>
+                  {(() => {
+                    const r = resourceMap.get(nextBooking.resourceId)
+                    if (!r) return null
+                    return (
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {subtypeLabelFromType(r.type)} · Piętro {r.floor}
+                      </p>
+                    )
+                  })()}
                 </div>
 
                 {nextBooking.note && (
@@ -273,11 +232,18 @@ export function StartPage({ user }: StartPageProps) {
                 )}
 
                 <div className="flex items-center gap-2 mt-1">
-                  <button onClick={() => navigate("/bookings")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted/20 transition-colors cursor-pointer">
+                  <button
+                    onClick={() => navigate("/bookings")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted/20 transition-colors cursor-pointer"
+                  >
                     <Calendar className="size-3.5" />
                     Kalendarz
                   </button>
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-500/50 text-rose-400 text-sm hover:bg-rose-500/10 transition-colors cursor-pointer">
+                  <button
+                    onClick={() => handleCancel(nextBooking.id)}
+                    disabled={updateStatus.isPending}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-500/50 text-rose-400 text-sm hover:bg-rose-500/10 transition-colors cursor-pointer disabled:opacity-50"
+                  >
                     <X className="size-3.5" />
                     Anuluj
                   </button>
@@ -295,25 +261,28 @@ export function StartPage({ user }: StartPageProps) {
             </p>
             {todayBookings.length > 0 ? (
               <div className="flex flex-col divide-y divide-border">
-                {todayBookings.map((b) => (
-                  <div key={b.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                    <div className="flex items-start gap-3">
-                      <div>
-                        <p className="text-base font-semibold tabular-nums leading-none">
-                          {formatTime(b.startTime)}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{formatTime(b.endTime)}</p>
+                {todayBookings.map((b) => {
+                  const r = resourceMap.get(b.resourceId)
+                  return (
+                    <div key={b.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                      <div className="flex items-start gap-3">
+                        <div>
+                          <p className="text-base font-semibold tabular-nums leading-none">
+                            {formatTime(b.startTime)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{formatTime(b.endTime)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{b.resourceName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {calcDuration(b.startTime, b.endTime)} · {b.note || (r ? subtypeLabelFromType(r.type) : "")}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">{b.resourceName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {calcDuration(b.startTime, b.endTime)} · {b.note || b.resourceSubtype}
-                        </p>
-                      </div>
+                      <BookingStatusBadge status={b.status} />
                     </div>
-                    <BookingStatusBadge status={b.status} />
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">Brak rezerwacji na dziś</p>
@@ -326,11 +295,15 @@ export function StartPage({ user }: StartPageProps) {
           <p className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-4">
             Dostępne teraz
           </p>
-          <div className="grid grid-cols-3 gap-4">
-            {availableNow.map((r) => (
-              <ResourceCard key={r.id} resource={r} onBook={() => navigate("/browse")} />
-            ))}
-          </div>
+          {availableNow.length > 0 ? (
+            <div className="grid grid-cols-3 gap-4">
+              {availableNow.map((r) => (
+                <ResourceCard key={r.id} resource={r} onBook={() => navigate("/browse", { state: { resourceId: r.id } })} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Brak dostępnych zasobów</p>
+          )}
         </div>
       </div>
     </div>
@@ -373,7 +346,7 @@ function ResourceCard({
   resource,
   onBook,
 }: {
-  resource: (typeof mockResources)[number]
+  resource: ResourceDto
   onBook: () => void
 }) {
   return (
@@ -392,16 +365,16 @@ function ResourceCard({
       </div>
       <p className="text-sm font-semibold">{resource.name}</p>
       <p className="text-xs text-muted-foreground mt-0.5">
-        {resource.subtypeLabel} · P{resource.floor} · {resource.capacity} os.
+        {subtypeLabelFromType(resource.type)} · P{resource.floor} · {resource.capacity} os.
       </p>
       <div className="flex items-center gap-1.5 mt-3">
         {resource.equipment.map((eq) => (
           <span
-            key={eq}
+            key={eq.id}
             className="flex items-center gap-1 text-muted-foreground"
-            title={eq}
+            title={eq.name}
           >
-            {EQUIPMENT_ICONS[eq]}
+            {EQUIPMENT_ICONS[eq.name]}
           </span>
         ))}
       </div>

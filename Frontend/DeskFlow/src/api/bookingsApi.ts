@@ -29,6 +29,14 @@ export const bookingsApi = {
     await apiClient.patch(`/api/bookings/${id}/status`, status)
   },
 
+  confirm: async (id: string): Promise<void> => {
+    await apiClient.patch(`/api/bookings/${id}/confirm`)
+  },
+
+  cancel: async (id: string): Promise<void> => {
+    await apiClient.patch(`/api/bookings/${id}/cancel`)
+  },
+
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/api/bookings/${id}`)
   },

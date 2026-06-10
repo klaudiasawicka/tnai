@@ -30,7 +30,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       <div className="w-full max-w-215 rounded-2xl overflow-hidden flex shadow-2xl border border-white/5">
         {/* Left panel */}
         <div
-          className="hidden md:flex flex-[1.2] flex-col justify-between p-10"
+          className="hidden md:flex flex-[1.2] flex-col justify-start p-10"
           style={{ background: "#161618" }}
         >
           <div className="flex items-center gap-3">
@@ -40,7 +40,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             <span className="text-white font-semibold text-base">DeskFlow</span>
           </div>
 
-          <div className="flex flex-col gap-3">
+          <div className="flex-1 flex flex-col justify-center gap-3">
             <h1 className="text-white text-3xl font-bold leading-tight">
               Zarezerwuj swoje<br />miejsce w biurze
             </h1>
@@ -49,18 +49,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             </p>
           </div>
 
-          <div className="flex gap-8">
-            {[
-              { value: "8", label: "Sal konf." },
-              { value: "40+", label: "Biurek" },
-              { value: "200+", label: "Użytkowników" },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <div className="text-cyan-400 font-bold text-lg">{stat.value}</div>
-                <div className="text-xs" style={{ color: "#666" }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Right panel */}

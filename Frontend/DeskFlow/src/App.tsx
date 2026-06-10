@@ -11,6 +11,8 @@ import { RegisterPage } from '@/pages/RegisterPage'
 import { StartPage } from '@/pages/StartPage'
 import { StatusBiuraPage } from '@/pages/admin/StatusBiuraPage'
 import { ZarzadzaniePage } from '@/pages/admin/ZarzadzaniePage'
+import { AdminRezerwacjePage } from '@/pages/admin/AdminRezerwacjePage'
+import { SettingsPage } from '@/pages/SettingsPage'
 
 function AuthenticatedApp() {
   const user = useAuthStore((s) => s.user)
@@ -33,6 +35,10 @@ function AuthenticatedApp() {
             path="/admin/zarzadzanie"
             element={isAdmin ? <ZarzadzaniePage /> : <Navigate to="/" replace />}
           />
+          <Route
+            path="/admin/rezerwacje"
+            element={isAdmin ? <AdminRezerwacjePage /> : <Navigate to="/" replace />}
+          />
 
           <Route path="/browse" element={<BrowsePage />} />
           <Route
@@ -43,12 +49,7 @@ function AuthenticatedApp() {
               </div>
             }
           />
-          <Route
-            path="/settings"
-            element={
-              <div className="p-6 text-sm text-muted-foreground">Ustawienia</div>
-            }
-          />
+          <Route path="/settings" element={<SettingsPage />} />
 
           <Route
             path="/"

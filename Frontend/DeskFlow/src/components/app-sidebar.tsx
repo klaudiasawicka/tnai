@@ -33,6 +33,7 @@ import { RoleName } from "@/auth/authType"
 const adminNavItems = [
   { label: "Status biura", icon: LayoutDashboard, to: "/admin/status" },
   { label: "Zarządzanie",  icon: LayoutList,      to: "/admin/zarzadzanie" },
+  { label: "Rezerwacje",   icon: CalendarDays,    to: "/admin/rezerwacje" },
 ]
 
 const accountNavItems = [

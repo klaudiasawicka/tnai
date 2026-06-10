@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from "react"
+import { useLocation } from "react-router"
 import { ResourceType, ResourceStatus } from "@/types/resourceType"
 import { useResources } from "@/hooks/useResources"
 import { useBookings, useCreateBooking } from "@/hooks/useBookings"
@@ -26,6 +27,7 @@ interface Booking {
   start: number // decimal hour, e.g. 9.5 = 9:30
   end: number
   person: string
+  isPast?: boolean
 }
 
 interface Resource {
@@ -143,6 +145,9 @@ function TimelineBar({
   } | null>(null)
 
   const activeBookings = bookings
+  const occupied = activeBookings.map(b => ({ start: b.start * 60, end: b.end * 60 }))
+  const isOccupied = (s: number, e: number) => occupied.some(b => s < b.end && e > b.start)
+
   const now = new Date()
   const nowHour = now.getHours() + now.getMinutes() / 60
   const nowPct = ((nowHour - TIMELINE_START) / TIMELINE_RANGE) * 100
@@ -184,19 +189,44 @@ function TimelineBar({
         let newEnd = newStart + dur
         if (newStart < TIMELINE_START_MIN) { newStart = TIMELINE_START_MIN; newEnd = TIMELINE_START_MIN + dur }
         if (newEnd > TIMELINE_END_MIN) { newEnd = TIMELINE_END_MIN; newStart = TIMELINE_END_MIN - dur }
+        if (isOccupied(newStart, newEnd)) {
+          const blocking = occupied.filter(b => newStart < b.end && newEnd > b.start)
+          if (deltaMin > 0) {
+            const edge = snapToGrid(Math.min(...blocking.map(b => b.start)) - dur)
+            if (edge >= TIMELINE_START_MIN && !isOccupied(edge, edge + dur)) {
+              onStartChange(edge); onEndChange(edge + dur)
+            }
+          } else if (deltaMin < 0) {
+            const edge = snapToGrid(Math.max(...blocking.map(b => b.end)))
+            if (edge + dur <= TIMELINE_END_MIN && !isOccupied(edge, edge + dur)) {
+              onStartChange(edge); onEndChange(edge + dur)
+            }
+          }
+          return
+        }
         onStartChange(newStart)
         onEndChange(newEnd)
       } else if (m === "resize-right") {
-        const newEnd = Math.min(
+        let newEnd = Math.min(
           TIMELINE_END_MIN,
           Math.max(startStart + MIN_DURATION, snapToGrid(startEnd + deltaMin)),
         )
+        const rightBlock = occupied.filter(b => b.start >= startStart + MIN_DURATION)
+        if (rightBlock.length > 0) {
+          const firstRight = Math.min(...rightBlock.map(b => b.start))
+          if (newEnd > firstRight) newEnd = firstRight
+        }
         onEndChange(newEnd)
       } else {
-        const newStart = Math.max(
+        let newStart = Math.max(
           TIMELINE_START_MIN,
           Math.min(startEnd - MIN_DURATION, snapToGrid(startStart + deltaMin)),
         )
+        const leftBlock = occupied.filter(b => b.end <= startEnd - MIN_DURATION)
+        if (leftBlock.length > 0) {
+          const lastLeft = Math.max(...leftBlock.map(b => b.end))
+          if (newStart < lastLeft) newStart = lastLeft
+        }
         onStartChange(newStart)
       }
     }
@@ -217,24 +247,27 @@ function TimelineBar({
 
   function handleBarMouseDown(e: React.MouseEvent<HTMLDivElement>) {
     if (e.button !== 0) return
-    // Block onMouseDown calls stopPropagation, so this only fires on empty bar area
     const clickedMin = xToMinutes(e.clientX)
+    if (occupied.some(b => clickedMin >= b.start && clickedMin < b.end)) return
     const dur = endMinutes - startMinutes
     let newStart = clickedMin
     let newEnd = newStart + dur
     if (newEnd > TIMELINE_END_MIN) { newEnd = TIMELINE_END_MIN; newStart = TIMELINE_END_MIN - dur }
     if (newStart < TIMELINE_START_MIN) { newStart = TIMELINE_START_MIN; newEnd = newStart + dur }
+    if (isOccupied(newStart, newEnd)) return
     onStartChange(newStart)
     onEndChange(newEnd)
   }
 
   function handleBarTouchStart(e: React.TouchEvent<HTMLDivElement>) {
     const clickedMin = xToMinutes(e.touches[0].clientX)
+    if (occupied.some(b => clickedMin >= b.start && clickedMin < b.end)) return
     const dur = endMinutes - startMinutes
     let newStart = clickedMin
     let newEnd = newStart + dur
     if (newEnd > TIMELINE_END_MIN) { newEnd = TIMELINE_END_MIN; newStart = TIMELINE_END_MIN - dur }
     if (newStart < TIMELINE_START_MIN) { newStart = TIMELINE_START_MIN; newEnd = newStart + dur }
+    if (isOccupied(newStart, newEnd)) return
     onStartChange(newStart)
     onEndChange(newEnd)
   }
@@ -254,7 +287,10 @@ function TimelineBar({
           return (
             <div
               key={i}
-              className="absolute top-0 h-full bg-cyan-500/30 pointer-events-none"
+              className={cn(
+                "absolute top-0 h-full pointer-events-none",
+                b.isPast ? "bg-slate-500/40" : "bg-rose-500/50",
+              )}
               style={{ left: `${left}%`, width: `${width}%` }}
             />
           )
@@ -332,12 +368,23 @@ function TimelineBar({
           }
           return (
             <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-rose-400 shrink-0" />
+              <span
+                className={cn(
+                  "size-1.5 rounded-full shrink-0",
+                  b.isPast ? "bg-slate-400" : "bg-rose-400",
+                )}
+              />
               <span>
                 {fmt(b.start)}–{fmt(b.end)}
               </span>
               <span>·</span>
               <span>{b.person}</span>
+              {b.isPast && (
+                <>
+                  <span>·</span>
+                  <span className="text-slate-400">zakończone</span>
+                </>
+              )}
             </div>
           )
         })}
@@ -402,7 +449,8 @@ type StatusFilter = "all" | "available" | "occupied"
 function buildIso(day: Date, totalMinutes: number): string {
   const d = new Date(day)
   d.setHours(Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0)
-  return d.toISOString()
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
@@ -412,6 +460,8 @@ export function BrowsePage() {
   const { data: allBookings = [] } = useBookings()
   const createBooking = useCreateBooking()
   const user = useAuthStore((s) => s.user)
+  const location = useLocation()
+  const initialResourceId = (location.state as { resourceId?: string } | null)?.resourceId ?? null
 
   const RESOURCES: Resource[] = useMemo(() => {
     const now = new Date()
@@ -447,7 +497,7 @@ export function BrowsePage() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(initialResourceId)
   const [selectedDay, setSelectedDay] = useState(0)
 
   // Booking form state — single source of truth for timeline + panel
@@ -481,13 +531,20 @@ export function BrowsePage() {
       .map((b) => {
         const start = new Date(b.startTime)
         const end = new Date(b.endTime)
+        const now = new Date()
         return {
           start: start.getHours() + start.getMinutes() / 60,
           end: end.getHours() + end.getMinutes() / 60,
           person: b.userNameSurname,
+          isPast: selectedDay === 0 && end <= now,
         }
       })
   }, [selectedId, selectedDay, allBookings])
+
+  const isOverlapping = useMemo(
+    () => selectedResourceBookings.some(b => startMinutes < b.end * 60 && endMinutes > b.start * 60),
+    [startMinutes, endMinutes, selectedResourceBookings],
+  )
 
   const filtered = useMemo(() => {
     return RESOURCES.filter((r) => {
@@ -555,6 +612,10 @@ export function BrowsePage() {
       await createBooking.mutateAsync(dto)
       setBookingDone(true)
       setNote("")
+      const nextStart = endMinutes + 30 <= TIMELINE_END_MIN - MIN_DURATION ? endMinutes : TIMELINE_START_MIN
+      const dur = endMinutes - startMinutes
+      setStartMinutes(nextStart)
+      setEndMinutes(Math.min(nextStart + dur, TIMELINE_END_MIN))
     } catch (err) {
       const axiosErr = err as { response?: { data?: unknown } }
       const data = axiosErr?.response?.data
@@ -777,7 +838,7 @@ export function BrowsePage() {
                       key={i}
                       onClick={() => setSelectedDay(i)}
                       className={cn(
-                        "flex flex-col items-center min-w-[48px] py-2 px-2 rounded-lg transition-colors cursor-pointer",
+                        "flex flex-col items-center min-w-12 py-2 px-2 rounded-lg transition-colors cursor-pointer",
                         isActive
                           ? "bg-foreground text-background"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/30",
@@ -925,9 +986,12 @@ export function BrowsePage() {
             {bookingError && (
               <p className="text-xs text-rose-400 text-center">{bookingError}</p>
             )}
+            {selected.status === ResourceStatus.Maintenance && (
+              <p className="text-xs text-amber-400 text-center">Pomieszczenie jest w serwisie</p>
+            )}
             <button
               onClick={handleBooking}
-              disabled={createBooking.isPending || !user || endMinutes <= startMinutes}
+              disabled={createBooking.isPending || !user || endMinutes <= startMinutes || isOverlapping || selected.status === ResourceStatus.Maintenance}
               className="w-full py-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-white text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {createBooking.isPending ? "Rezerwowanie…" : "Zarezerwuj"}

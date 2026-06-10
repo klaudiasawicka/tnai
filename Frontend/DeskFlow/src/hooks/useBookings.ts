@@ -59,6 +59,32 @@ export function useUpdateBookingStatus() {
   })
 }
 
+export function useConfirmBooking() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => bookingsApi.confirm(id),
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: bookingKeys.all })
+      qc.invalidateQueries({ queryKey: bookingKeys.my })
+      qc.invalidateQueries({ queryKey: bookingKeys.detail(id) })
+    },
+  })
+}
+
+export function useCancelBooking() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => bookingsApi.cancel(id),
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: bookingKeys.all })
+      qc.invalidateQueries({ queryKey: bookingKeys.my })
+      qc.invalidateQueries({ queryKey: bookingKeys.detail(id) })
+    },
+  })
+}
+
 export function useDeleteBooking() {
   const qc = useQueryClient()
 
