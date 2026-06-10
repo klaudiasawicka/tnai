@@ -143,7 +143,7 @@ export function StatusBiuraPage() {
               key={key}
               onClick={() => setFilter(key)}
               className={cn(
-                "px-4 py-1.5 rounded-md text-sm font-medium transition-colors",
+                "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
                 filter === key
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"

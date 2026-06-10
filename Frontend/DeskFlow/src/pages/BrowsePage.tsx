@@ -838,7 +838,7 @@ export function BrowsePage() {
                       key={i}
                       onClick={() => setSelectedDay(i)}
                       className={cn(
-                        "flex flex-col items-center min-w-12 py-2 px-2 rounded-lg transition-colors cursor-pointer",
+                        "flex flex-col items-center min-w-12 py-2 px-2 rounded-full transition-colors cursor-pointer",
                         isActive
                           ? "bg-foreground text-background"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/30",
@@ -992,7 +992,7 @@ export function BrowsePage() {
             <button
               onClick={handleBooking}
               disabled={createBooking.isPending || !user || endMinutes <= startMinutes || isOverlapping || selected.status === ResourceStatus.Maintenance}
-              className="w-full py-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-white text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 rounded-full bg-cyan-500 hover:bg-cyan-400 text-white text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {createBooking.isPending ? "Rezerwowanie…" : "Zarezerwuj"}
             </button>

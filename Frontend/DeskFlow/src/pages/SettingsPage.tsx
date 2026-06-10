@@ -68,7 +68,7 @@ export function SettingsPage() {
                   setNameInput(user.nameSurname)
                   setRenamingMode(true)
                 }}
-                className="self-start flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted/20 transition-colors cursor-pointer"
+                className="self-start flex items-center gap-2 px-3 py-1.5 rounded-full border border-border text-sm hover:bg-muted/20 transition-colors cursor-pointer"
               >
                 <PenLine className="size-3.5" />
                 Zmień nazwę
@@ -80,7 +80,7 @@ export function SettingsPage() {
         {/* ── Wyloguj ── */}
         <button
           onClick={logout}
-          className="self-start flex items-center gap-2 px-4 py-2 rounded-lg border border-rose-600 bg-rose-600/10 text-rose-500 hover:bg-rose-600/20 text-sm font-semibold transition-colors cursor-pointer"
+          className="self-start flex items-center gap-2 px-4 py-2 rounded-full border border-rose-600 bg-rose-600/10 text-rose-500 hover:bg-rose-600/20 text-sm font-semibold transition-colors cursor-pointer"
         >
           <LogOut className="size-4" />
           Wyloguj się

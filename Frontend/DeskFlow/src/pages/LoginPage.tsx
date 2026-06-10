@@ -128,7 +128,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full font-semibold py-2.5 rounded-lg text-sm transition-colors mt-1 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full font-semibold py-2.5 rounded-full text-sm transition-colors mt-1 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: "#22d3ee", color: "#0a0a0a" }}
               onMouseEnter={(e) => !loading && (e.currentTarget.style.background = "#67e8f9")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "#22d3ee")}

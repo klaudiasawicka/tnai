@@ -153,7 +153,7 @@ export function StartPage({ user }: StartPageProps) {
         </div>
         <button
           onClick={() => navigate("/browse")}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-white text-sm font-semibold transition-colors cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500 hover:bg-cyan-400 text-white text-sm font-semibold transition-colors cursor-pointer"
         >
           <Plus className="size-4" />
           Nowa rezerwacja
@@ -234,7 +234,7 @@ export function StartPage({ user }: StartPageProps) {
                 <div className="flex items-center gap-2 mt-1">
                   <button
                     onClick={() => navigate("/bookings")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted/20 transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-sm hover:bg-muted/20 transition-colors cursor-pointer"
                   >
                     <Calendar className="size-3.5" />
                     Kalendarz
@@ -242,7 +242,7 @@ export function StartPage({ user }: StartPageProps) {
                   <button
                     onClick={() => handleCancel(nextBooking.id)}
                     disabled={updateStatus.isPending}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-500/50 text-rose-400 text-sm hover:bg-rose-500/10 transition-colors cursor-pointer disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-rose-500/50 text-rose-400 text-sm hover:bg-rose-500/10 transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <X className="size-3.5" />
                     Anuluj

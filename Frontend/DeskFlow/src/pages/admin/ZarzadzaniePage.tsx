@@ -3,7 +3,7 @@ import {
   Users, Briefcase, BookOpen,
   Search, Plus, Pencil, Trash2,
   Wifi, Monitor, Wind, PenLine,
-  X, Check,
+  X, Check, AlertCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -35,11 +35,11 @@ function resourceTypeToSubtype(type: ResourceType): RoomSubtype {
 
 function amenityIcon(name: string) {
   switch (name) {
-    case "WiFi":         return <Wifi className="size-4" />
-    case "Projektor":    return <Monitor className="size-4" />
-    case "Klimatyzacja": return <Wind className="size-4" />
-    case "Tablica":      return <PenLine className="size-4" />
-    case "Monitor":      return <Monitor className="size-4" />
+    case "WiFi":         return <Wifi className="size-3.5" />
+    case "Projektor":    return <Monitor className="size-3.5" />
+    case "Klimatyzacja": return <Wind className="size-3.5" />
+    case "Tablica":      return <PenLine className="size-3.5" />
+    case "Monitor":      return <Monitor className="size-3.5" />
     default:             return null
   }
 }
@@ -130,7 +130,6 @@ function PomieszczeniaModal({ onClose, onSubmit, initial }: ModalProps) {
       floor: Math.max(1, parseInt(form.floor) || 1),
       capacity: Math.max(1, parseInt(form.capacity) || 1),
       pricePerHour: Math.max(0, parseFloat(form.pricePerHour) || 0),
-      // When editing, preserve existing equipment IDs; when creating, none (no equipment endpoint)
       equipmentIds: initial ? initial.equipment.map((e) => e.id) : [],
     })
     onClose()
@@ -289,14 +288,14 @@ function PomieszczeniaModal({ onClose, onSubmit, initial }: ModalProps) {
         <div className="flex gap-3 mt-6">
           <button
             onClick={onClose}
-            className="flex-1 rounded-lg border border-border py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-muted-foreground transition-colors"
+            className="flex-1 rounded-full border border-border py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-muted-foreground transition-colors"
           >
             Anuluj
           </button>
           <button
             onClick={handleSubmit}
             disabled={!form.name.trim()}
-            className="flex-1 rounded-lg bg-cyan-500 py-2.5 text-sm font-medium text-white hover:bg-cyan-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 rounded-full bg-cyan-500 py-2.5 text-sm font-semibold text-white hover:bg-cyan-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {initial ? "Zapisz zmiany" : "Dodaj pomieszczenie"}
           </button>
@@ -317,6 +316,7 @@ export function ZarzadzaniePage() {
   const [search, setSearch] = useState("")
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const rooms = useMemo(
     () =>
@@ -358,7 +358,13 @@ export function ZarzadzaniePage() {
   }
 
   function handleDelete(id: string) {
-    deleteResource.mutate(id)
+    if (!window.confirm("Czy na pewno chcesz usunąć to pomieszczenie?")) return
+    setDeleteError(null)
+    deleteResource.mutate(id, {
+      onError: () => {
+        setDeleteError("Nie udało się usunąć pomieszczenia. Może być powiązane z istniejącymi rezerwacjami.")
+      },
+    })
   }
 
   function handleModalSubmit(dto: CreateResourceDto) {
@@ -407,7 +413,7 @@ export function ZarzadzaniePage() {
           </div>
           <button
             onClick={openAdd}
-            className="flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-600 transition-colors"
+            className="flex items-center gap-2 rounded-full bg-cyan-500 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-600 transition-colors"
           >
             <Plus className="size-4" />
             Dodaj pomieszczenie
@@ -415,81 +421,130 @@ export function ZarzadzaniePage() {
         </div>
       </div>
 
+      {/* Error banner */}
+      {deleteError && (
+        <div className="mx-8 mt-3 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 shrink-0">
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{deleteError}</span>
+          <button
+            onClick={() => setDeleteError(null)}
+            className="ml-auto rounded p-0.5 hover:bg-red-500/20 transition-colors"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="flex-1 overflow-auto px-8 py-6">
         <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="grid grid-cols-[1fr_110px_200px_120px_auto] px-6 py-3 border-b border-border">
-            {["Nazwa", "Pojemność", "Udogodnienia", "Aktywne", ""].map((h, i) => (
-              <span key={i} className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {h}
-              </span>
-            ))}
-          </div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Nazwa
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                  Pojemność
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Udogodnienia
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Aktywne
+                </th>
+                <th className="px-6 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-sm text-muted-foreground text-center">
+                    Ładowanie…
+                  </td>
+                </tr>
+              )}
 
-          {isLoading && (
-            <p className="px-6 py-8 text-sm text-muted-foreground text-center">Ładowanie…</p>
-          )}
+              {!isLoading && filtered.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-sm text-muted-foreground text-center">
+                    Brak pomieszczeń spełniających kryteria wyszukiwania.
+                  </td>
+                </tr>
+              )}
 
-          {!isLoading && filtered.length === 0 && (
-            <p className="px-6 py-8 text-sm text-muted-foreground text-center">
-              Brak pomieszczeń spełniających kryteria wyszukiwania.
-            </p>
-          )}
-
-          {filtered.map((room) => (
-            <div
-              key={room.id}
-              className="grid grid-cols-[1fr_110px_200px_120px_auto] px-6 py-4 items-center border-b border-border last:border-0 hover:bg-muted/20 transition-colors"
-            >
-              {/* Nazwa */}
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground shrink-0">
-                  <SubtypeIcon subtype={room.subtype} />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{room.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {subtypeShortLabel(room.subtype)} · P{room.floor}
-                  </p>
-                </div>
-              </div>
-
-              {/* Pojemność */}
-              <span className="text-sm">{room.capacity} os.</span>
-
-              {/* Udogodnienia */}
-              <div className="flex items-center gap-2 text-muted-foreground">
-                {room.amenities.map((a) => (
-                  <span key={a} title={a}>
-                    {amenityIcon(a)}
-                  </span>
-                ))}
-              </div>
-
-              {/* Toggle */}
-              <Toggle
-                on={room.active}
-                onToggle={() => handleToggle(room.id)}
-              />
-
-              {/* Akcje */}
-              <div className="flex items-center gap-1 justify-end">
-                <button
-                  onClick={() => openEdit(room.id)}
-                  className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              {filtered.map((room) => (
+                <tr
+                  key={room.id}
+                  className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors"
                 >
-                  <Pencil className="size-3.5" />
-                  Edytuj
-                </button>
-                <button
-                  onClick={() => handleDelete(room.id)}
-                  className="rounded-md p-1.5 text-red-400 hover:text-red-500 hover:bg-muted transition-colors"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-              </div>
-            </div>
-          ))}
+                  {/* Nazwa */}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground shrink-0">
+                        <SubtypeIcon subtype={room.subtype} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{room.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {subtypeShortLabel(room.subtype)} · P{room.floor}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Pojemność */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-sm">{room.capacity} os.</span>
+                  </td>
+
+                  {/* Udogodnienia */}
+                  <td className="px-6 py-4">
+                    {room.amenities.length === 0 ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {room.amenities.map((a) => (
+                          <span
+                            key={a}
+                            className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground"
+                          >
+                            {amenityIcon(a)}
+                            {a}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Toggle */}
+                  <td className="px-6 py-4">
+                    <Toggle on={room.active} onToggle={() => handleToggle(room.id)} />
+                  </td>
+
+                  {/* Akcje */}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-1 justify-end">
+                      <button
+                        onClick={() => openEdit(room.id)}
+                        className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Pencil className="size-3.5" />
+                        Edytuj
+                      </button>
+                      <button
+                        onClick={() => handleDelete(room.id)}
+                        disabled={deleteResource.isPending}
+                        className="rounded-md p-1.5 text-red-400 hover:text-red-500 hover:bg-muted transition-colors disabled:opacity-40"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 

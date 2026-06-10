@@ -169,7 +169,7 @@ function BookingPanel({ booking, onClose }: { booking: BookingDto; onClose: () =
           <button
             onClick={() => updateStatus.mutate({ id: booking.id, status: BookingStatus.Confirmed })}
             disabled={updateStatus.isPending}
-            className="w-full flex items-center justify-center gap-2 border border-emerald-800 bg-emerald-950/40 text-emerald-400 rounded-lg py-2 text-sm font-medium hover:bg-emerald-950/70 transition-colors cursor-pointer disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 border border-emerald-800 bg-emerald-950/40 text-emerald-400 rounded-full py-2 text-sm font-medium hover:bg-emerald-950/70 transition-colors cursor-pointer disabled:opacity-50"
           >
             <Check size={14} />
             {updateStatus.isPending ? "Potwierdzanie…" : "Potwierdź rezerwację"}
@@ -178,7 +178,7 @@ function BookingPanel({ booking, onClose }: { booking: BookingDto; onClose: () =
         {canCancel && !confirming && (
           <button
             onClick={() => setConfirming(true)}
-            className="w-full flex items-center justify-center gap-2 border border-red-800 bg-red-950/40 text-red-400 rounded-lg py-2 text-sm font-medium hover:bg-red-950/70 transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 border border-red-800 bg-red-950/40 text-red-400 rounded-full py-2 text-sm font-medium hover:bg-red-950/70 transition-colors cursor-pointer"
           >
             <X size={14} />
             Anuluj rezerwację
@@ -190,14 +190,14 @@ function BookingPanel({ booking, onClose }: { booking: BookingDto; onClose: () =
             <div className="flex gap-2">
               <button
                 onClick={() => setConfirming(false)}
-                className="flex-1 border border-border rounded-lg py-1.5 text-sm hover:bg-accent transition-colors cursor-pointer"
+                className="flex-1 border border-border rounded-full py-1.5 text-sm hover:bg-accent transition-colors cursor-pointer"
               >
                 Nie
               </button>
               <button
                 onClick={handleCancel}
                 disabled={cancel.isPending}
-                className="flex-1 border border-red-800 bg-red-950/40 text-red-400 rounded-lg py-1.5 text-sm font-medium hover:bg-red-950/70 transition-colors cursor-pointer disabled:opacity-50"
+                className="flex-1 border border-red-800 bg-red-950/40 text-red-400 rounded-full py-1.5 text-sm font-medium hover:bg-red-950/70 transition-colors cursor-pointer disabled:opacity-50"
               >
                 {cancel.isPending ? "…" : "Tak, anuluj"}
               </button>
@@ -299,7 +299,7 @@ export function AdminRezerwacjePage() {
             key={key}
             onClick={() => { setStatusFilter(key); setSelectedId(null) }}
             className={cn(
-              "px-3 py-1.5 text-sm rounded-md font-medium transition-colors cursor-pointer",
+              "px-3 py-1.5 text-sm rounded-full font-medium transition-colors cursor-pointer",
               statusFilter === key
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted",
