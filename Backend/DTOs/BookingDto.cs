@@ -13,6 +13,9 @@ namespace ProjektTnai.DTOs
         public string UserNameSurname { get; set; } = string.Empty;
         public Guid ResourceId { get; set; }
         public string ResourceName { get; set; } = string.Empty;
+        public ResourceType ResourceType { get; set; }
+        public int ResourceFloor { get; set; }
+        public int ResourceCapacity { get; set; }
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
         public decimal TotalPrice { get; set; }

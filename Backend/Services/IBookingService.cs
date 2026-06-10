@@ -15,5 +15,6 @@ namespace ProjektTnai.Services
         Task<BookingDto> CreateBookingAsync(BookingDto bookingDto);
         Task<bool> UpdateBookingStatusAsync(Guid id, BookingStatus status);
         Task<bool> DeleteBookingAsync(Guid id);
+        Task<bool> CancelBookingAsync(Guid id, Guid userId);
     }
 }

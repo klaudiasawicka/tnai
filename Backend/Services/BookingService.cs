@@ -79,6 +79,9 @@ namespace ProjektTnai.Services
                     UserNameSurname = b.User.NameSurname,
                     ResourceId = b.ResourceId,
                     ResourceName = b.Resource.Name,
+                    ResourceType = b.Resource.Type,
+                    ResourceFloor = b.Resource.Floor,
+                    ResourceCapacity = b.Resource.Capacity,
                     StartTime = b.StartTime,
                     EndTime = b.EndTime,
                     TotalPrice = b.TotalPrice,
@@ -109,6 +112,9 @@ namespace ProjektTnai.Services
                 UserNameSurname = booking.User.NameSurname,
                 ResourceId = booking.ResourceId,
                 ResourceName = booking.Resource.Name,
+                ResourceType = booking.Resource.Type,
+                ResourceFloor = booking.Resource.Floor,
+                ResourceCapacity = booking.Resource.Capacity,
                 StartTime = booking.StartTime,
                 EndTime = booking.EndTime,
                 TotalPrice = booking.TotalPrice,
@@ -132,6 +138,9 @@ namespace ProjektTnai.Services
                     UserNameSurname = b.User.NameSurname,
                     ResourceId = b.ResourceId,
                     ResourceName = b.Resource.Name,
+                    ResourceType = b.Resource.Type,
+                    ResourceFloor = b.Resource.Floor,
+                    ResourceCapacity = b.Resource.Capacity,
                     StartTime = b.StartTime,
                     EndTime = b.EndTime,
                     TotalPrice = b.TotalPrice,
@@ -156,6 +165,9 @@ namespace ProjektTnai.Services
                     UserNameSurname = b.User.NameSurname,
                     ResourceId = b.ResourceId,
                     ResourceName = b.Resource.Name,
+                    ResourceType = b.Resource.Type,
+                    ResourceFloor = b.Resource.Floor,
+                    ResourceCapacity = b.Resource.Capacity,
                     StartTime = b.StartTime,
                     EndTime = b.EndTime,
                     TotalPrice = b.TotalPrice,
@@ -176,6 +188,17 @@ namespace ProjektTnai.Services
             }
 
             booking.Status = status;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> CancelBookingAsync(Guid id, Guid userId)
+        {
+            var booking = await _context.Bookings.FindAsync(id);
+            if (booking == null) return false;
+            if (booking.UserId != userId) return false;
+
+            booking.Status = BookingStatus.Cancelled;
             await _context.SaveChangesAsync();
             return true;
         }
