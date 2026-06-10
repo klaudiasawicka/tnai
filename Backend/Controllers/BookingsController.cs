@@ -91,6 +91,18 @@ namespace ProjektTnai.Controllers
             return NoContent();
         }
 
+        [HttpPatch("{id:guid}/confirm")]
+        public async Task<IActionResult> ConfirmBooking(Guid id)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized();
+
+            var success = await _bookingService.ConfirmBookingAsync(id, userId);
+            if (!success) return NotFound();
+            return NoContent();
+        }
+
         [HttpPatch("{id:guid}/cancel")]
         public async Task<IActionResult> CancelBooking(Guid id)
         {

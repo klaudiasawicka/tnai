@@ -43,7 +43,7 @@ namespace ProjektTnai.Services
                 TotalPrice = bookingDto.TotalPrice,
                 ParticipantCount = bookingDto.ParticipantCount,
                 Note = bookingDto.Note,
-                Status = bookingDto.Status,
+                Status = BookingStatus.Pending,
             };
 
             _context.Bookings.Add(booking);
@@ -199,6 +199,18 @@ namespace ProjektTnai.Services
             // if (booking.UserId != userId) return false;
 
             booking.Status = BookingStatus.Cancelled;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> ConfirmBookingAsync(Guid id, Guid userId)
+        {
+            var booking = await _context.Bookings.FindAsync(id);
+            if (booking == null) return false;
+            if (booking.UserId != userId) return false;        // tylko właściciel
+            if (booking.Status != BookingStatus.Pending) return false;  // tylko z Pending
+
+            booking.Status = BookingStatus.Confirmed;
             await _context.SaveChangesAsync();
             return true;
         }
