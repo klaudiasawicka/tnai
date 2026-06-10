@@ -273,7 +273,7 @@ export function StartPage({ user }: StartPageProps) {
                 )}
 
                 <div className="flex items-center gap-2 mt-1">
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted/20 transition-colors cursor-pointer">
+                  <button onClick={() => navigate("/bookings")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted/20 transition-colors cursor-pointer">
                     <Calendar className="size-3.5" />
                     Kalendarz
                   </button>

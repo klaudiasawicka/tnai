@@ -89,6 +89,12 @@ export function StatusBiuraPage() {
           new Date(b.startTime) <= now &&
           new Date(b.endTime) >= now,
       )
+      const dynamicStatus: RoomStatus =
+        r.status === ResourceStatus.Maintenance
+          ? "maintenance"
+          : activeBooking
+            ? "occupied"
+            : "available"
       return {
         id: r.id,
         name: r.name,
@@ -97,7 +103,7 @@ export function StatusBiuraPage() {
         capacity: r.capacity,
         currentReservation: activeBooking?.userNameSurname ?? null,
         reservedUntil: activeBooking ? formatEndTime(activeBooking.endTime) : null,
-        status: resourceStatusToRoomStatus(r.status),
+        status: dynamicStatus,
       }
     })
   }, [resources, allBookings])

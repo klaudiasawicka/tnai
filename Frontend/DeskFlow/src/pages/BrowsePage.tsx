@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import { ResourceType, ResourceStatus } from "@/types/resourceType"
 import { useResources } from "@/hooks/useResources"
-import { useCreateBooking } from "@/hooks/useBookings"
+import { useBookings, useCreateBooking } from "@/hooks/useBookings"
 import { useAuthStore } from "@/store/authStore"
 import type { CreateBookingDto } from "@/types/bookingType"
+import { BookingStatus } from "@/types/bookingType"
 import { cn } from "@/lib/utils"
 import {
   Users,
@@ -105,32 +106,203 @@ const TIMELINE_START = 8
 const TIMELINE_END = 20
 const TIMELINE_RANGE = TIMELINE_END - TIMELINE_START
 
-function TimelineBar({ bookings, selectedDay }: { bookings: Booking[]; selectedDay: number }) {
-  const activeBookings = selectedDay === 0 ? bookings : []
+const TIMELINE_START_MIN = TIMELINE_START * 60  // 480
+const TIMELINE_END_MIN = TIMELINE_END * 60      // 1200
+const TIMELINE_RANGE_MIN = TIMELINE_RANGE * 60  // 720
+const MIN_DURATION = 30
+
+function snapToGrid(m: number): number {
+  return Math.round(m / 30) * 30
+}
+
+function minutesToPct(minutes: number): number {
+  return ((minutes - TIMELINE_START_MIN) / TIMELINE_RANGE_MIN) * 100
+}
+
+interface TimelineBarProps {
+  bookings: Booking[]
+  startMinutes: number
+  endMinutes: number
+  onStartChange: (v: number) => void
+  onEndChange: (v: number) => void
+}
+
+function TimelineBar({
+  bookings,
+  startMinutes,
+  endMinutes,
+  onStartChange,
+  onEndChange,
+}: TimelineBarProps) {
+  const barRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef<{
+    mode: "drag" | "resize-left" | "resize-right"
+    startX: number
+    startStart: number
+    startEnd: number
+  } | null>(null)
+
+  const activeBookings = bookings
   const now = new Date()
   const nowHour = now.getHours() + now.getMinutes() / 60
   const nowPct = ((nowHour - TIMELINE_START) / TIMELINE_RANGE) * 100
   const showNow = nowHour >= TIMELINE_START && nowHour <= TIMELINE_END
-
   const hourMarkers = [8, 10, 12, 14, 16, 18, 20]
+
+  const selLeft = minutesToPct(startMinutes)
+  const selWidth = ((endMinutes - startMinutes) / TIMELINE_RANGE_MIN) * 100
+
+  function xToMinutes(clientX: number): number {
+    if (!barRef.current) return startMinutes
+    const rect = barRef.current.getBoundingClientRect()
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    return snapToGrid(pct * TIMELINE_RANGE_MIN + TIMELINE_START_MIN)
+  }
+
+  function startInteraction(
+    mode: "drag" | "resize-left" | "resize-right",
+    clientX: number,
+  ) {
+    dragRef.current = {
+      mode,
+      startX: clientX,
+      startStart: startMinutes,
+      startEnd: endMinutes,
+    }
+
+    function handleMove(e: MouseEvent | TouchEvent) {
+      if (!dragRef.current || !barRef.current) return
+      if ("touches" in e) e.preventDefault()
+      const cx = "touches" in e ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX
+      const rect = barRef.current.getBoundingClientRect()
+      const deltaMin = ((cx - dragRef.current.startX) / rect.width) * TIMELINE_RANGE_MIN
+      const { mode: m, startStart, startEnd } = dragRef.current
+      const dur = startEnd - startStart
+
+      if (m === "drag") {
+        let newStart = snapToGrid(startStart + deltaMin)
+        let newEnd = newStart + dur
+        if (newStart < TIMELINE_START_MIN) { newStart = TIMELINE_START_MIN; newEnd = TIMELINE_START_MIN + dur }
+        if (newEnd > TIMELINE_END_MIN) { newEnd = TIMELINE_END_MIN; newStart = TIMELINE_END_MIN - dur }
+        onStartChange(newStart)
+        onEndChange(newEnd)
+      } else if (m === "resize-right") {
+        const newEnd = Math.min(
+          TIMELINE_END_MIN,
+          Math.max(startStart + MIN_DURATION, snapToGrid(startEnd + deltaMin)),
+        )
+        onEndChange(newEnd)
+      } else {
+        const newStart = Math.max(
+          TIMELINE_START_MIN,
+          Math.min(startEnd - MIN_DURATION, snapToGrid(startStart + deltaMin)),
+        )
+        onStartChange(newStart)
+      }
+    }
+
+    function handleUp() {
+      dragRef.current = null
+      document.removeEventListener("mousemove", handleMove)
+      document.removeEventListener("mouseup", handleUp)
+      document.removeEventListener("touchmove", handleMove as EventListener)
+      document.removeEventListener("touchend", handleUp)
+    }
+
+    document.addEventListener("mousemove", handleMove)
+    document.addEventListener("mouseup", handleUp)
+    document.addEventListener("touchmove", handleMove as EventListener, { passive: false })
+    document.addEventListener("touchend", handleUp)
+  }
+
+  function handleBarMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.button !== 0) return
+    // Block onMouseDown calls stopPropagation, so this only fires on empty bar area
+    const clickedMin = xToMinutes(e.clientX)
+    const dur = endMinutes - startMinutes
+    let newStart = clickedMin
+    let newEnd = newStart + dur
+    if (newEnd > TIMELINE_END_MIN) { newEnd = TIMELINE_END_MIN; newStart = TIMELINE_END_MIN - dur }
+    if (newStart < TIMELINE_START_MIN) { newStart = TIMELINE_START_MIN; newEnd = newStart + dur }
+    onStartChange(newStart)
+    onEndChange(newEnd)
+  }
+
+  function handleBarTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+    const clickedMin = xToMinutes(e.touches[0].clientX)
+    const dur = endMinutes - startMinutes
+    let newStart = clickedMin
+    let newEnd = newStart + dur
+    if (newEnd > TIMELINE_END_MIN) { newEnd = TIMELINE_END_MIN; newStart = TIMELINE_END_MIN - dur }
+    if (newStart < TIMELINE_START_MIN) { newStart = TIMELINE_START_MIN; newEnd = newStart + dur }
+    onStartChange(newStart)
+    onEndChange(newEnd)
+  }
 
   return (
     <div>
-      <div className="relative h-8 rounded overflow-hidden bg-muted/40">
+      <div
+        ref={barRef}
+        className="relative h-8 rounded bg-muted/40 select-none cursor-pointer overflow-hidden"
+        onMouseDown={handleBarMouseDown}
+        onTouchStart={handleBarTouchStart}
+      >
+        {/* Existing bookings */}
         {activeBookings.map((b, i) => {
           const left = ((b.start - TIMELINE_START) / TIMELINE_RANGE) * 100
           const width = ((b.end - b.start) / TIMELINE_RANGE) * 100
           return (
             <div
               key={i}
-              className="absolute top-0 h-full bg-cyan-500/70"
+              className="absolute top-0 h-full bg-cyan-500/30 pointer-events-none"
               style={{ left: `${left}%`, width: `${width}%` }}
             />
           )
         })}
+
+        {/* Selection block */}
+        <div
+          className="absolute top-0 h-full bg-cyan-500 rounded cursor-grab active:cursor-grabbing"
+          style={{ left: `${selLeft}%`, width: `${selWidth}%` }}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+            startInteraction("drag", e.clientX)
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation()
+            startInteraction("drag", e.touches[0].clientX)
+          }}
+        >
+          {/* Left resize handle */}
+          <div
+            className="absolute left-0 top-0 h-full w-2 cursor-ew-resize z-10"
+            onMouseDown={(e) => {
+              e.stopPropagation()
+              startInteraction("resize-left", e.clientX)
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation()
+              startInteraction("resize-left", e.touches[0].clientX)
+            }}
+          />
+          {/* Right resize handle */}
+          <div
+            className="absolute right-0 top-0 h-full w-2 cursor-ew-resize z-10"
+            onMouseDown={(e) => {
+              e.stopPropagation()
+              startInteraction("resize-right", e.clientX)
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation()
+              startInteraction("resize-right", e.touches[0].clientX)
+            }}
+          />
+        </div>
+
+        {/* Current time indicator */}
         {showNow && (
           <div
-            className="absolute top-0 h-full w-px bg-white/70"
+            className="absolute top-0 h-full w-px bg-white/70 pointer-events-none"
             style={{ left: `${nowPct}%` }}
           />
         )}
@@ -180,24 +352,30 @@ function TimeInput({
   label,
   value,
   onChange,
+  min = 0,
+  max = 23 * 60 + 30,
 }: {
   label: string
   value: number
   onChange: (v: number) => void
+  min?: number
+  max?: number
 }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
       <p className="text-xs text-muted-foreground self-start">{label}</p>
       <button
-        onClick={() => onChange(Math.min(value + 30, 23 * 60 + 30))}
-        className="text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => onChange(Math.min(value + 30, max))}
+        disabled={value >= max}
+        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
       >
         <ChevronUp className="size-3.5" />
       </button>
       <span className="text-xl font-semibold tabular-nums">{formatMinutes(value)}</span>
       <button
-        onClick={() => onChange(Math.max(value - 30, 0))}
-        className="text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => onChange(Math.max(value - 30, min))}
+        disabled={value <= min}
+        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
       >
         <ChevronDown className="size-3.5" />
       </button>
@@ -231,25 +409,40 @@ function buildIso(day: Date, totalMinutes: number): string {
 
 export function BrowsePage() {
   const { data: rawResources = [], isLoading, isError } = useResources()
+  const { data: allBookings = [] } = useBookings()
   const createBooking = useCreateBooking()
   const user = useAuthStore((s) => s.user)
 
-  const RESOURCES: Resource[] = useMemo(
-    () =>
-      rawResources.map((r) => ({
+  const RESOURCES: Resource[] = useMemo(() => {
+    const now = new Date()
+    return rawResources.map((r) => {
+      const activeBooking = allBookings.find(
+        (b) =>
+          b.resourceId === r.id &&
+          (b.status === BookingStatus.Confirmed || b.status === BookingStatus.Pending) &&
+          new Date(b.startTime) <= now &&
+          new Date(b.endTime) > now,
+      )
+      const effectiveStatus =
+        r.status === ResourceStatus.Maintenance
+          ? ResourceStatus.Maintenance
+          : activeBooking
+            ? ResourceStatus.Booked
+            : ResourceStatus.Available
+      return {
         id: r.id,
         name: r.name,
         type: r.type,
-        status: r.status,
+        status: effectiveStatus,
         floor: r.floor,
         capacity: r.capacity,
         description: "",
         subtypeLabel: subtypeLabel(r.type),
         equipment: r.equipment.map((e) => e.name),
         bookings: [],
-      })),
-    [rawResources],
-  )
+      }
+    })
+  }, [rawResources, allBookings])
 
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
@@ -257,7 +450,7 @@ export function BrowsePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState(0)
 
-  // Booking form state
+  // Booking form state — single source of truth for timeline + panel
   const [startMinutes, setStartMinutes] = useState(10 * 60)
   const [endMinutes, setEndMinutes] = useState(11 * 60 + 30)
   const [participants, setParticipants] = useState(2)
@@ -268,6 +461,33 @@ export function BrowsePage() {
   const durationMin = endMinutes - startMinutes
 
   const selected = RESOURCES.find((r) => r.id === selectedId) ?? null
+
+  const selectedResourceBookings = useMemo((): Booking[] => {
+    if (!selectedId) return []
+    const base = new Date()
+    const day = new Date(base)
+    day.setDate(base.getDate() + selectedDay)
+    return allBookings
+      .filter((b) => {
+        if (b.resourceId !== selectedId) return false
+        if (b.status === BookingStatus.Cancelled) return false
+        const start = new Date(b.startTime)
+        return (
+          start.getFullYear() === day.getFullYear() &&
+          start.getMonth() === day.getMonth() &&
+          start.getDate() === day.getDate()
+        )
+      })
+      .map((b) => {
+        const start = new Date(b.startTime)
+        const end = new Date(b.endTime)
+        return {
+          start: start.getHours() + start.getMinutes() / 60,
+          end: end.getHours() + end.getMinutes() / 60,
+          person: b.userNameSurname,
+        }
+      })
+  }, [selectedId, selectedDay, allBookings])
 
   const filtered = useMemo(() => {
     return RESOURCES.filter((r) => {
@@ -295,6 +515,16 @@ export function BrowsePage() {
   const durationH = Math.floor(durationMin / 60)
   const durationM = durationMin % 60
   const durationText = durationM === 0 ? `${durationH}h` : `${durationH}h ${durationM}m`
+
+  function handleStartChange(v: number) {
+    const newStart = Math.max(TIMELINE_START_MIN, Math.min(TIMELINE_END_MIN - MIN_DURATION, v))
+    setStartMinutes(newStart)
+    if (endMinutes < newStart + MIN_DURATION) setEndMinutes(newStart + MIN_DURATION)
+  }
+
+  function handleEndChange(v: number) {
+    setEndMinutes(Math.min(TIMELINE_END_MIN, Math.max(startMinutes + MIN_DURATION, v)))
+  }
 
   function selectResource(id: string) {
     setSelectedId((prev) => (prev === id ? null : id))
@@ -566,7 +796,13 @@ export function BrowsePage() {
               <p className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-3">
                 Dostępność · 8:00 – 20:00
               </p>
-              <TimelineBar bookings={selected.bookings} selectedDay={selectedDay} />
+              <TimelineBar
+                bookings={selectedResourceBookings}
+                startMinutes={startMinutes}
+                endMinutes={endMinutes}
+                onStartChange={handleStartChange}
+                onEndChange={handleEndChange}
+              />
             </div>
           </div>
 
@@ -585,15 +821,16 @@ export function BrowsePage() {
                 <TimeInput
                   label="Od"
                   value={startMinutes}
-                  onChange={(v) => {
-                    setStartMinutes(v)
-                    if (endMinutes <= v) setEndMinutes(v + 30)
-                  }}
+                  min={TIMELINE_START_MIN}
+                  max={TIMELINE_END_MIN - MIN_DURATION}
+                  onChange={handleStartChange}
                 />
                 <TimeInput
                   label="Do"
                   value={endMinutes}
-                  onChange={(v) => setEndMinutes(Math.max(startMinutes + 30, v))}
+                  min={startMinutes + MIN_DURATION}
+                  max={TIMELINE_END_MIN}
+                  onChange={handleEndChange}
                 />
               </div>
             </div>
@@ -603,7 +840,16 @@ export function BrowsePage() {
               {DURATIONS.map((d) => (
                 <button
                   key={d.value}
-                  onClick={() => setEndMinutes(startMinutes + d.value)}
+                  onClick={() => {
+                    const newEnd = startMinutes + d.value
+                    if (newEnd <= TIMELINE_END_MIN) {
+                      setEndMinutes(newEnd)
+                    } else {
+                      const newStart = Math.max(TIMELINE_START_MIN, TIMELINE_END_MIN - d.value)
+                      setStartMinutes(newStart)
+                      setEndMinutes(TIMELINE_END_MIN)
+                    }
+                  }}
                   className={cn(
                     "flex-1 py-1.5 text-xs rounded-full border transition-colors cursor-pointer",
                     durationMin === d.value

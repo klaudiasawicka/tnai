@@ -54,6 +54,7 @@ export function useUpdateBookingStatus() {
       qc.invalidateQueries({ queryKey: bookingKeys.all })
       qc.invalidateQueries({ queryKey: bookingKeys.my })
       qc.invalidateQueries({ queryKey: bookingKeys.detail(id) })
+      qc.invalidateQueries({ queryKey: ['resources'] })
     },
   })
 }
@@ -67,6 +68,7 @@ export function useDeleteBooking() {
       qc.invalidateQueries({ queryKey: bookingKeys.all })
       qc.invalidateQueries({ queryKey: bookingKeys.my })
       qc.removeQueries({ queryKey: bookingKeys.detail(id) })
+      qc.invalidateQueries({ queryKey: ['resources'] })
     },
   })
 }
