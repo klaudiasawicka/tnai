@@ -63,18 +63,14 @@ namespace ProjektTnai
             using (var scope = app.Services.CreateScope())
             {
                 var services = scope.ServiceProvider;
-                try
-                {
-                    var context = services.GetRequiredService<AppDbContext>();
-                    // It's often better to apply migrations manually or in a startup script in production
-                    await context.Database.MigrateAsync();
-                    await DbSeeder.InitializeAsync(context);
-                }
-                catch (Exception ex)
-                {
-                    var logger = services.GetRequiredService<ILogger<Program>>();
-                    logger.LogError(ex, "An error occurred while migrating or seeding the database.");
-                }
+                var logger = services.GetRequiredService<ILogger<Program>>();
+                var context = services.GetRequiredService<AppDbContext>();
+
+                try { await context.Database.MigrateAsync(); }
+                catch (Exception ex) { logger.LogWarning(ex, "Migration failed (may already be applied)."); }
+
+                try { await DbSeeder.InitializeAsync(context); }
+                catch (Exception ex) { logger.LogError(ex, "Seeding failed."); }
             }
 
             if (app.Environment.IsDevelopment())
